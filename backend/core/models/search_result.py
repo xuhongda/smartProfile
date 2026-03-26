@@ -4,9 +4,10 @@ from datetime import datetime
 class SearchItem:
     """搜索结果项模型"""
     
-    def __init__(self, id: int, filename: str, file_type: str, content: str, snippet: str, 
+    def __init__(self, id: int, uuid: str, filename: str, file_type: str, content: str, snippet: str, 
                  file_path: str, created_at: datetime, updated_at: datetime):
         self.id = id
+        self.uuid = uuid
         self.filename = filename
         self.file_type = file_type
         self.content = content
@@ -18,7 +19,8 @@ class SearchItem:
     def to_dict(self):
         """转换为字典"""
         return {
-            "id": self.id,
+            "id": self.uuid,  # 使用uuid作为id返回，保持前端兼容性
+            "uuid": self.uuid,
             "filename": self.filename,
             "file_type": self.file_type,
             "content": self.content,

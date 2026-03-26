@@ -1,11 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { Spin, Alert, Empty, Button } from 'antd';
 
-const NewWordPreview = ({ file, url, content }) => {
+const NewWordPreview = ({ file, url, content, keyword = '' }) => {
   const [previewContent, setPreviewContent] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showFullContent, setShowFullContent] = useState(false);
+
+  // 高亮关键词
+  const highlightKeyword = (html, keyword) => {
+    if (!keyword) return html;
+    
+    const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`(${escapedKeyword})`, 'gi');
+    return html.replace(regex, '<span style="background-color: #ffeb3b; padding: 0 2px; border-radius: 2px;">$1</span>');
+  };
 
   // 加载Word文档内容
   const loadWordDocument = async () => {
@@ -20,7 +29,7 @@ const NewWordPreview = ({ file, url, content }) => {
 
       // 优先使用content（后端返回的HTML）
       if (content) {
-        setPreviewContent(content);
+        setPreviewContent(highlightKeyword(content, keyword));
         return;
       }
 
@@ -40,7 +49,7 @@ const NewWordPreview = ({ file, url, content }) => {
         throw new Error('文件内容为空');
       }
 
-      setPreviewContent(text);
+      setPreviewContent(highlightKeyword(text, keyword));
     } catch (err) {
       setError(`无法预览Word文档: ${err.message}`);
       console.error('Word预览错误:', err);
@@ -51,7 +60,7 @@ const NewWordPreview = ({ file, url, content }) => {
 
   useEffect(() => {
     loadWordDocument();
-  }, [file, url, content]);
+  }, [file, url, content, keyword]);
 
   // 切换显示完整内容
   const toggleFullContent = () => {

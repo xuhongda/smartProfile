@@ -141,7 +141,7 @@ const SearchResults = ({
                                 danger
                                 onClick={(e) => {
                                   e.stopPropagation()
-                                  handleDeleteDocument(result.id, result.filename)
+                                  handleDeleteDocument(result.uuid || result.id, result.filename)
                                 }}
                               />
                             </Tooltip>

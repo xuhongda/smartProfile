@@ -59,6 +59,7 @@ const FilePreviewDrawer = ({ visible, onClose, fileData, fileTypeInfo, getFileTy
         file={file} 
         url={fileUrl} 
         content={fileData.content} 
+        keyword={fileData.keyword || ''}
       />
     )
   }

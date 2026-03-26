@@ -1,12 +1,13 @@
-from typing import List
+from typing import List, Optional
 from datetime import datetime
 
 class Document:
     """文档模型"""
     
-    def __init__(self, id: int, filename: str, file_type: str, content: str, 
-                 content_length: int, created_at: datetime, updated_at: datetime):
-        self.id = id
+    def __init__(self, uuid: str, filename: str, file_type: str, content: str, 
+                 content_length: int, created_at: datetime, updated_at: datetime, id: Optional[int] = None):
+        self.uuid = uuid
+        self.id = id  # 保留id字段用于兼容性
         self.filename = filename
         self.file_type = file_type
         self.content = content
@@ -17,7 +18,8 @@ class Document:
     def to_dict(self):
         """转换为字典"""
         return {
-            "id": self.id,
+            "uuid": self.uuid,
+            "id": self.uuid,  # 使用uuid作为id返回，保持前端兼容性
             "filename": self.filename,
             "file_type": self.file_type,
             "content_length": self.content_length,

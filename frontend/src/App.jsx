@@ -9,7 +9,7 @@ import Header from './components/layout/Header'
 // 导入页面组件
 import ChatContainer from './components/ChatContainer'
 import SearchResults from './components/pages/SearchResults'
-import FileUpload from './components/pages/FileUpload'
+
 import FileManagement from './components/pages/FileManagement'
 import DataAnalytics from './components/pages/DataAnalytics'
 
@@ -112,6 +112,9 @@ function App() {
   // 处理文件上传
   const handleFileUpload = async (options) => {
     const { file, onSuccess, onError, onProgress } = options
+    // 上传前重置预览状态
+    setFilePreviewData(null)
+    setFilePreviewVisible(false)
     return handleUpload(file, onSuccess, onError, onProgress, setUploading, setUploadProgress, () => fetchDocumentsData(), () => fetchStatisticsData())
   }
 
@@ -132,7 +135,9 @@ function App() {
 
   // 处理文件预览
   const handleFilePreview = async (source) => {
-    return apiHandleFilePreview(source, documents, setFilePreviewLoading, setFilePreviewData, setFilePreviewVisible, getFileTypeInfo)
+    // 预览前重置预览状态
+    setFilePreviewData(null)
+    return apiHandleFilePreview(source, documents, setFilePreviewLoading, setFilePreviewData, setFilePreviewVisible, getFileTypeInfo, searchKeyword)
   }
 
   // 组件加载时获取文档列表和统计数据
@@ -294,18 +299,11 @@ function App() {
               sortBy={sortBy}
               setSortBy={setSortBy}
               handleFilePreview={handleFilePreview}
-              handleDeleteDocument={(docId, filename) => handleDeleteDocument(docId, filename, fetchDocumentsData, fetchStatisticsData)}
+              handleDeleteDocument={(docId, filename) => handleDeleteDocument(docId, filename, fetchDocumentsData, fetchStatisticsData, searchResults, setSearchResults)}
             />
           )}
           
-          {/* 文件上传页 */}
-          {activeMenu === 'upload' && (
-            <FileUpload 
-              uploading={uploading}
-              uploadProgress={uploadProgress}
-              handleUpload={handleFileUpload}
-            />
-          )}
+
           
           {/* 文件管理页 */}
           {activeMenu === 'documents' && (
@@ -317,7 +315,10 @@ function App() {
               setFilterVisible={setFilterVisible}
               setFilteredDocuments={setFilteredDocuments}
               handleFilePreview={handleFilePreview}
-              handleDeleteDocument={(docId, filename) => handleDeleteDocument(docId, filename, fetchDocumentsData, fetchStatisticsData)}
+              handleDeleteDocument={(docId, filename) => handleDeleteDocument(docId, filename, fetchDocumentsData, fetchStatisticsData, searchResults, setSearchResults)}
+              uploading={uploading}
+              uploadProgress={uploadProgress}
+              handleUpload={handleFileUpload}
             />
           )}
           

@@ -5,6 +5,7 @@ from .document_manager_service import DocumentManagerService
 from .search_service import SearchService
 from .file_type_service import FileTypeService
 from .generic_ai_client import GenericAIClient
+from .model_manager_service import ModelManagerService
 from core.utils.container import Container
 from core.utils.config import config
 
@@ -19,6 +20,7 @@ file_parser_service = FileParserService()
 document_manager_service = DocumentManagerService(database_service)
 generic_ai_client = GenericAIClient()
 search_service = SearchService(tokenizer_service, database_service)
+model_manager_service = ModelManagerService(config)
 
 # 注册服务到容器
 container.register('config', config)
@@ -29,6 +31,7 @@ container.register('file_parser_service', file_parser_service)
 container.register('document_manager_service', document_manager_service)
 container.register('generic_ai_client', generic_ai_client)
 container.register('search_service', search_service)
+container.register('model_manager_service', model_manager_service)
 
 __all__ = [
     "TokenizerService",
@@ -38,5 +41,6 @@ __all__ = [
     "SearchService",
     "FileTypeService",
     "GenericAIClient",
+    "ModelManagerService",
     "container"
 ]

@@ -62,3 +62,7 @@ Thumbs.db
 # 其他临时文件
 *~
 /node_modules/
+
+*.db
+models/
+*.xlsx

@@ -122,9 +122,9 @@ export const fetchStatistics = async (documents, setStatistics) => {
 }
 
 // 删除文档
-export const handleDeleteDocument = async (docId, filename, fetchDocuments, fetchStatistics) => {
+export const handleDeleteDocument = async (docUuid, filename, fetchDocuments, fetchStatistics, searchResults = null, setSearchResults = null) => {
   try {
-    const response = await fetch(`http://localhost:8000/documents/${docId}`, {
+    const response = await fetch(`http://localhost:8000/documents/${docUuid}`, {
       method: 'DELETE'
     })
     
@@ -139,6 +139,11 @@ export const handleDeleteDocument = async (docId, filename, fetchDocuments, fetc
       fetchDocuments()
       // 重新获取统计数据
       fetchStatistics()
+      // 更新搜索结果列表，移除已删除的文档
+      if (searchResults && setSearchResults) {
+        const updatedSearchResults = searchResults.filter(doc => doc.uuid !== docUuid && doc.id !== docUuid)
+        setSearchResults(updatedSearchResults)
+      }
     } else {
       message.error(result.message, 2) // 2秒
     }
@@ -148,23 +153,42 @@ export const handleDeleteDocument = async (docId, filename, fetchDocuments, fetc
 }
 
 // 处理文件预览
-export const handleFilePreview = async (source, documents, setFilePreviewLoading, setFilePreviewData, setFilePreviewVisible, getFileTypeInfo) => {
-  console.log('开始文件预览:', source)
+let previewRequestId = 0
+export const handleFilePreview = async (source, documents, setFilePreviewLoading, setFilePreviewData, setFilePreviewVisible, getFileTypeInfo, keyword = '') => {
+  const currentRequestId = ++previewRequestId
+  console.log('开始文件预览:', source, '请求ID:', currentRequestId)
   setFilePreviewLoading(true)
   try {
-    // 检查是否有文档ID
-    if (source.id || source.docId) {
-      console.log('使用文档ID获取预览')
-      const docId = source.id || source.docId
+    // 检查是否有文档UUID
+    const docUuid = source.uuid
+    if (docUuid) {
+      console.log('使用文档UUID获取预览:', docUuid)
       
       // 调用后端预览API
-      const response = await fetch(`http://localhost:8000/preview/${docId}`)
+      const response = await fetch(`http://localhost:8000/preview/${docUuid}`)
+      
+      // 检查是否是最新的请求
+      if (currentRequestId !== previewRequestId) {
+        console.log('跳过旧请求的响应:', currentRequestId)
+        return
+      }
+      
       console.log('响应状态:', response.status)
       if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error('文档不存在，可能已被删除。请刷新页面获取最新文档列表。')
+        }
         throw new Error(`无法获取文件预览，状态码: ${response.status}`)
       }
       
       const result = await response.json()
+      
+      // 检查是否是最新的请求
+      if (currentRequestId !== previewRequestId) {
+        console.log('跳过旧请求的响应:', currentRequestId)
+        return
+      }
+      
       if (result.success) {
         console.log('后端预览API返回成功')
         setFilePreviewData({
@@ -172,7 +196,8 @@ export const handleFilePreview = async (source, documents, setFilePreviewLoading
           fileName: result.filename || source.filename || '未知文件',
           content: result.content,
           fileType: result.file_type,
-          contentType: result.content_type
+          contentType: result.content_type,
+          keyword: keyword
         })
         setFilePreviewVisible(true)
         console.log('设置filePreviewData完成')
@@ -182,31 +207,49 @@ export const handleFilePreview = async (source, documents, setFilePreviewLoading
       }
     }
     
-    // 如果没有文档ID，尝试从documents数组中查找
+    // 如果没有文档UUID，尝试从documents数组中查找
     let filename = source.filename || source.fileName
     if (filename) {
       const doc = documents.find(doc => doc.filename === filename)
-      if (doc?.id) {
-        console.log('从documents数组获取文档ID')
-        const docId = doc.id
+      const docUuidFromList = doc?.uuid
+      if (docUuidFromList) {
+        console.log('从documents数组获取文档UUID:', docUuidFromList)
         
         // 调用后端预览API
-        const response = await fetch(`http://localhost:8000/preview/${docId}`)
+        const response = await fetch(`http://localhost:8000/preview/${docUuidFromList}`)
+        
+        // 检查是否是最新的请求
+        if (currentRequestId !== previewRequestId) {
+          console.log('跳过旧请求的响应:', currentRequestId)
+          return
+        }
+        
         console.log('响应状态:', response.status)
         if (!response.ok) {
+          if (response.status === 404) {
+            throw new Error('文档不存在，可能已被删除。请刷新页面获取最新文档列表。')
+          }
           throw new Error(`无法获取文件预览，状态码: ${response.status}`)
         }
         
         const result = await response.json()
+        
+        // 检查是否是最新的请求
+        if (currentRequestId !== previewRequestId) {
+          console.log('跳过旧请求的响应:', currentRequestId)
+          return
+        }
+        
         if (result.success) {
           console.log('后端预览API返回成功')
           setFilePreviewData({
-            uri: source.file_path || '',
-            fileName: result.filename || source.filename || '未知文件',
-            content: result.content,
-            fileType: result.file_type,
-            contentType: result.content_type
-          })
+          uri: source.file_path || '',
+          fileName: result.filename || source.filename || '未知文件',
+          content: result.content,
+          fileType: result.file_type,
+          contentType: result.content_type,
+          keyword: keyword
+        })
           setFilePreviewVisible(true)
           console.log('设置filePreviewData完成')
           return
@@ -229,6 +272,13 @@ export const handleFilePreview = async (source, documents, setFilePreviewLoading
     
     // 从原文件获取内容
     const response = await fetch(fileUrl)
+    
+    // 检查是否是最新的请求
+    if (currentRequestId !== previewRequestId) {
+      console.log('跳过旧请求的响应:', currentRequestId)
+      return
+    }
+    
     console.log('响应状态:', response.status)
     if (!response.ok) {
       throw new Error(`无法获取文件内容，状态码: ${response.status}`)
@@ -242,6 +292,13 @@ export const handleFilePreview = async (source, documents, setFilePreviewLoading
       if (fileTypeInfo.type === 'txt') {
         // 文本文件直接读取
         fileContent = await response.text()
+        
+        // 检查是否是最新的请求
+        if (currentRequestId !== previewRequestId) {
+          console.log('跳过旧请求的响应:', currentRequestId)
+          return
+        }
+        
         console.log('文本文件内容长度:', fileContent.length)
       } else {
         // 对于Word和Excel文件，不读取内容，让前端组件处理
@@ -252,26 +309,43 @@ export const handleFilePreview = async (source, documents, setFilePreviewLoading
       fileContent = `文件类型: ${fileTypeInfo.name}\n文件分类: ${fileTypeInfo.category}\n\n提示: 该文件类型需要在本地打开查看详细内容`
     }
     
+    // 检查是否是最新的请求
+    if (currentRequestId !== previewRequestId) {
+      console.log('跳过旧请求的响应:', currentRequestId)
+      return
+    }
+    
     setFilePreviewData({
       uri: fileUrl,
       fileName: filename,
-      content: fileContent
+      content: fileContent,
+      keyword: keyword
     })
     console.log('设置filePreviewData完成')
     setFilePreviewVisible(true)
     console.log('设置filePreviewVisible完成')
   } catch (error) {
+    // 检查是否是最新的请求
+    if (currentRequestId !== previewRequestId) {
+      console.log('跳过旧请求的错误:', currentRequestId)
+      return
+    }
+    
     console.error('文件预览失败:', error)
     message.error(`文件预览失败: ${error.message}`, 2) // 2秒
     // 即使出错也显示预览窗口，以便查看错误信息
     setFilePreviewData({
       uri: '',
       fileName: source.filename || '未知文件',
-      content: `预览失败: ${error.message}`
+      content: `预览失败: ${error.message}`,
+      keyword: keyword
     })
     setFilePreviewVisible(true)
   } finally {
-    setFilePreviewLoading(false)
-    console.log('文件预览加载状态设置为false')
+    // 检查是否是最新的请求
+    if (currentRequestId === previewRequestId) {
+      setFilePreviewLoading(false)
+      console.log('文件预览加载状态设置为false')
+    }
   }
 }

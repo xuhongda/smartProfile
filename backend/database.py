@@ -17,8 +17,8 @@ Base = declarative_base()
 class Document(Base):
     __tablename__ = 'documents'
     
-    id = Column(Integer, primary_key=True, index=True)
-    uuid = Column(String(36), nullable=False, unique=True, index=True, default=lambda: str(uuid.uuid4()))
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    uuid = Column(String(36), unique=True, index=True, default=lambda: str(uuid.uuid4()))
     filename = Column(String(255), nullable=False, index=True)
     file_type = Column(String(50), nullable=False, index=True)  # excel, word, txt
     content = Column(Text, nullable=False)

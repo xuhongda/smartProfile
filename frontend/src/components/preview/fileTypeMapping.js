@@ -102,6 +102,8 @@ const getPreviewComponent = (file) => {
       return ExcelPreview;
     } else if (file.type === 'word') {
       return WordPreview;
+    } else if (file.type === 'txt') {
+      return TextPreview;
     } else if (fileTypeMapping[file.type]) {
       return fileTypeMapping[file.type];
     }

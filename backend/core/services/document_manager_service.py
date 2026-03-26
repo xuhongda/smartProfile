@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import List, Optional
+import uuid
 from database import Document as DocumentModel
 from core.models.document import Document, DocumentList
 
@@ -31,11 +32,12 @@ class DocumentManagerService:
             existing_doc.updated_at = datetime.utcnow()
             db.commit()
             db.refresh(existing_doc)
-            doc_id = existing_doc.id
+            doc_uuid = existing_doc.uuid
             message = f"文件 '{filename}' 已更新"
         else:
             # 创建新文件记录
             new_doc = DocumentModel(
+                uuid=str(uuid.uuid4()),
                 filename=filename,
                 file_type=file_type,
                 content=content
@@ -43,12 +45,12 @@ class DocumentManagerService:
             db.add(new_doc)
             db.commit()
             db.refresh(new_doc)
-            doc_id = new_doc.id
+            doc_uuid = new_doc.uuid
             message = f"文件 '{filename}' 上传成功"
         
         # 构建返回的文档对象
         doc = Document(
-            id=doc_id,
+            uuid=doc_uuid,
             filename=filename,
             file_type=file_type,
             content=content,
@@ -82,6 +84,7 @@ class DocumentManagerService:
         db.refresh(doc)
         
         return Document(
+            uuid=doc.uuid,
             id=doc.id,
             filename=doc.filename,
             file_type=doc.file_type,
@@ -92,7 +95,7 @@ class DocumentManagerService:
         )
     
     def delete_document(self, db, doc_id: int) -> bool:
-        """删除文档
+        """删除文档（使用ID）
         
         Args:
             db: 数据库会话
@@ -109,8 +112,26 @@ class DocumentManagerService:
         db.commit()
         return True
     
+    def delete_document_by_uuid(self, db, doc_uuid: str) -> bool:
+        """删除文档（使用UUID）
+        
+        Args:
+            db: 数据库会话
+            doc_uuid: 文档UUID
+            
+        Returns:
+            bool: 是否删除成功
+        """
+        doc = db.query(DocumentModel).filter(DocumentModel.uuid == doc_uuid).first()
+        if not doc:
+            raise ValueError(f"文档不存在: {doc_uuid}")
+        
+        db.delete(doc)
+        db.commit()
+        return True
+    
     def get_document(self, db, doc_id: int) -> Document:
-        """获取文档
+        """获取文档（使用ID）
         
         Args:
             db: 数据库会话
@@ -124,7 +145,32 @@ class DocumentManagerService:
             raise ValueError(f"文档不存在: {doc_id}")
         
         return Document(
+            uuid=doc.uuid,
             id=doc.id,
+            filename=doc.filename,
+            file_type=doc.file_type,
+            content=doc.content,
+            content_length=len(doc.content),
+            created_at=doc.created_at,
+            updated_at=doc.updated_at
+        )
+    
+    def get_document_by_uuid(self, db, doc_uuid: str) -> Document:
+        """获取文档（使用UUID）
+        
+        Args:
+            db: 数据库会话
+            doc_uuid: 文档UUID
+            
+        Returns:
+            Document: 文档对象
+        """
+        doc = db.query(DocumentModel).filter(DocumentModel.uuid == doc_uuid).first()
+        if not doc:
+            raise ValueError(f"文档不存在: {doc_uuid}")
+        
+        return Document(
+            uuid=doc.uuid,
             filename=doc.filename,
             file_type=doc.file_type,
             content=doc.content,
@@ -147,7 +193,7 @@ class DocumentManagerService:
         from sqlalchemy import func
         
         # 计算总数
-        total = db.query(func.count(DocumentModel.id)).scalar()
+        total = db.query(func.count(DocumentModel.uuid)).scalar()
         
         # 查询文档
         offset = (page - 1) * page_size
@@ -157,6 +203,7 @@ class DocumentManagerService:
         doc_list = []
         for doc in documents:
             doc_list.append(Document(
+                uuid=doc.uuid,
                 id=doc.id,
                 filename=doc.filename,
                 file_type=doc.file_type,

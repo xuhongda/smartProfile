@@ -9,7 +9,6 @@ const Header = ({ activeMenu, setActiveMenu, fetchDocuments, onAIClick }) => {
   
   const navItems = [
     { key: 'home', label: '首页', icon: <HomeOutlined /> },
-    { key: 'upload', label: '上传', icon: <UploadOutlined /> },
     { key: 'documents', label: '文件', icon: <FileOutlined />, onClick: () => {
         fetchDocuments()
         setActiveMenu('documents')

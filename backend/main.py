@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Request, Depends, UploadFile, File, HTTPException, staticfiles
+from typing import List
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 import time
@@ -15,6 +16,7 @@ file_parser_service = container.resolve('file_parser_service')
 document_manager_service = container.resolve('document_manager_service')
 search_service = container.resolve('search_service')
 generic_ai_client = container.resolve('generic_ai_client')
+model_manager_service = container.resolve('model_manager_service')
 
 # 创建上传目录
 UPLOAD_DIR = config.get('upload.directory')
@@ -32,6 +34,12 @@ app = FastAPI(
 
 # 挂载静态文件服务
 app.mount("/uploads", staticfiles.StaticFiles(directory=UPLOAD_DIR), name="uploads")
+
+# 挂载 models 目录作为静态文件服务
+MODELS_DIR = os.path.join(os.path.dirname(__file__), 'models')
+if not os.path.exists(MODELS_DIR):
+    os.makedirs(MODELS_DIR)
+app.mount("/models", staticfiles.StaticFiles(directory=MODELS_DIR), name="models")
 
 # 配置 CORS
 app.add_middleware(
@@ -64,6 +72,26 @@ async def health_check():
         "message": "API 服务运行正常",
         "timestamp": time.time()
     }
+
+@app.get("/api/model/path")
+async def get_model_path():
+    """获取模型文件夹路径
+    
+    Returns:
+        模型文件夹路径
+    """
+    try:
+        # 获取 models 文件夹的绝对路径
+        models_path = os.path.abspath(MODELS_DIR)
+        return {
+            "success": True,
+            "path": models_path
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"获取模型文件夹路径失败: {str(e)}"
+        }
 
 @app.post("/upload")
 async def upload_file(
@@ -108,7 +136,7 @@ async def upload_file(
         return {
             "success": True,
             "message": message,
-            "file_id": doc.id,
+            "file_uuid": doc.uuid,
             "filename": doc.filename,
             "file_type": doc.file_type,
             "content_length": doc.content_length,
@@ -184,15 +212,15 @@ async def get_documents(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"获取文档列表失败: {str(e)}")
 
-@app.delete("/documents/{doc_id}")
+@app.delete("/documents/{doc_uuid}")
 async def delete_document(
-    doc_id: int,
+    doc_uuid: str,
     db: Session = Depends(get_db)
 ):
     """删除文档
     
     Args:
-        doc_id: 文档ID
+        doc_uuid: 文档UUID
         db: 数据库会话
     
     Returns:
@@ -200,10 +228,15 @@ async def delete_document(
     """
     try:
         # 查找文档
-        doc = document_manager_service.get_document(db, doc_id)
+        doc = document_manager_service.get_document_by_uuid(db, doc_uuid)
+        
+        # 删除文件系统中的文件
+        file_path = os.path.join(UPLOAD_DIR, doc.filename)
+        if os.path.exists(file_path):
+            os.remove(file_path)
         
         # 删除文档
-        document_manager_service.delete_document(db, doc_id)
+        document_manager_service.delete_document_by_uuid(db, doc_uuid)
         
         return {
             "success": True,
@@ -245,15 +278,15 @@ async def db_check(db: Session = Depends(get_db)):
             "message": f"数据库连接失败: {str(e)}"
         }
 
-@app.get("/preview/{doc_id}")
+@app.get("/preview/{doc_uuid}")
 async def preview_document(
-    doc_id: int,
+    doc_uuid: str,
     db: Session = Depends(get_db)
 ):
     """文件预览接口
     
     Args:
-        doc_id: 文档ID
+        doc_uuid: 文档UUID
         db: 数据库会话
     
     Returns:
@@ -261,7 +294,7 @@ async def preview_document(
     """
     try:
         # 查找文档
-        doc = document_manager_service.get_document(db, doc_id)
+        doc = document_manager_service.get_document_by_uuid(db, doc_uuid)
         
         # 构建文件路径
         file_path = os.path.join(UPLOAD_DIR, doc.filename)
@@ -311,8 +344,11 @@ async def preview_document(
             # 解析Excel文档为JSON
             import pandas as pd
             from io import BytesIO
+            import json
             
             df = pd.read_excel(BytesIO(file_content), engine='openpyxl')
+            # 处理nan值
+            df = df.fillna('')
             # 转换为JSON
             json_data = df.to_dict(orient='records')
             
@@ -386,4 +422,116 @@ async def set_ai_config(
         return {
             "success": False,
             "message": f"配置更新失败: {str(e)}"
+        }
+
+@app.post("/api/model/upload")
+async def upload_model(
+    files: List[UploadFile] = File(...)
+):
+    """上传模型
+    
+    Args:
+        files: 上传的模型文件列表
+    
+    Returns:
+        上传结果
+    """
+    try:
+        # 调用模型管理服务上传模型
+        result = await model_manager_service.upload_model(files)
+        
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"上传模型失败: {str(e)}"
+        }
+
+@app.get("/api/model/list")
+async def list_models():
+    """获取模型列表
+    
+    Returns:
+        模型列表
+    """
+    try:
+        models = model_manager_service.get_models()
+        return {
+            "success": True,
+            "models": models
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"获取模型列表失败: {str(e)}"
+        }
+
+@app.delete("/api/model/{model_name}")
+async def delete_model(
+    model_name: str
+):
+    """删除模型
+    
+    Args:
+        model_name: 模型名称
+    
+    Returns:
+        删除结果
+    """
+    try:
+        # 调用模型管理服务删除模型
+        result = model_manager_service.delete_model(model_name)
+        
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"删除模型失败: {str(e)}"
+        }
+
+@app.post("/api/model/load/{model_name}")
+async def load_model(
+    model_name: str
+):
+    """加载模型
+    
+    Args:
+        model_name: 模型名称
+    
+    Returns:
+        加载结果
+    """
+    try:
+        # 调用模型管理服务加载模型
+        result = model_manager_service.load_model(model_name)
+        
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"加载模型失败: {str(e)}"
+        }
+
+@app.get("/api/model/status")
+async def get_model_status():
+    """获取模型加载状态
+    
+    Returns:
+        模型加载状态
+    """
+    try:
+        # 调用模型管理服务获取模型状态
+        result = model_manager_service.get_model_status()
+        
+        return result
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"获取模型状态失败: {str(e)}"
         }

@@ -1,11 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { Spin, Alert, Empty, Button } from 'antd';
 
-const NewTextPreview = ({ file, content }) => {
+const NewTextPreview = ({ file, content, keyword = '' }) => {
   const [previewContent, setPreviewContent] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showFullContent, setShowFullContent] = useState(false);
+
+  // 高亮关键词
+  const highlightKeyword = (text, keyword) => {
+    if (!keyword) return text;
+    
+    const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`(${escapedKeyword})`, 'gi');
+    return text.replace(regex, '<span style="background-color: #ffeb3b; padding: 0 2px; border-radius: 2px;">$1</span>');
+  };
 
   // 加载和显示文本内容
   const loadTextContent = async () => {
@@ -27,14 +36,15 @@ const NewTextPreview = ({ file, content }) => {
       if (typeof content === 'object' && content !== null) {
         try {
           // 如果是对象，尝试转换为JSON字符串
-          setPreviewContent(JSON.stringify(content, null, 2));
+          const jsonString = JSON.stringify(content, null, 2);
+          setPreviewContent(highlightKeyword(jsonString, keyword));
         } catch (jsonError) {
           // 如果转换失败，使用toString()
-          setPreviewContent(String(content));
+          setPreviewContent(highlightKeyword(String(content), keyword));
         }
       } else {
         // 如果已经是字符串，直接使用
-        setPreviewContent(String(content));
+        setPreviewContent(highlightKeyword(String(content), keyword));
       }
     } catch (err) {
       setError(`无法预览文本文件: ${err.message}`);
@@ -46,7 +56,7 @@ const NewTextPreview = ({ file, content }) => {
 
   useEffect(() => {
     loadTextContent();
-  }, [file, content]);
+  }, [file, content, keyword]);
 
   // 切换显示完整内容
   const toggleFullContent = () => {
@@ -105,9 +115,8 @@ const NewTextPreview = ({ file, content }) => {
           fontSize: '14px',
           lineHeight: '1.5'
         }}
-      >
-        <pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{previewContent}</pre>
-      </div>
+        dangerouslySetInnerHTML={{ __html: previewContent }}
+      />
       {previewContent.length > 1000 && (
         <div style={{ marginTop: '16px', textAlign: 'center' }}>
           <Button 

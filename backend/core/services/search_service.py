@@ -28,18 +28,19 @@ class SearchService:
         if self.tokenizer_service.is_chinese(query):
             query = self.tokenizer_service.tokenize_query(query)
         
-        # 使用LIKE进行全文搜索（支持中文）
+        # 使用FTS5全文搜索
         search_query = text("""
             SELECT 
-                d.id, d.filename, d.file_type, d.content, d.created_at, d.updated_at
+                d.id, d.uuid, d.filename, d.file_type, d.content, d.created_at, d.updated_at
             FROM documents d
-            WHERE d.content LIKE :query OR d.filename LIKE :query
+            JOIN documents_fts ON d.id = documents_fts.rowid
+            WHERE documents_fts MATCH :query
             LIMIT :page_size OFFSET :offset
         """)
         
         offset = (page - 1) * page_size
         results = db.execute(search_query, {
-            "query": f"%{query}%",
+            "query": query,
             "page_size": page_size,
             "offset": offset
         }).fetchall()
@@ -48,9 +49,10 @@ class SearchService:
         count_query = text("""
             SELECT COUNT(*)
             FROM documents d
-            WHERE d.content LIKE :query OR d.filename LIKE :query
+            JOIN documents_fts ON d.id = documents_fts.rowid
+            WHERE documents_fts MATCH :query
         """)
-        total = db.execute(count_query, {"query": f"%{query}%"}).scalar() or 0
+        total = db.execute(count_query, {"query": query}).scalar() or 0
         
         # 构建搜索结果
         items = []
@@ -70,6 +72,7 @@ class SearchService:
             
             items.append(SearchItem(
                 id=result.id,
+                uuid=result.uuid,
                 filename=result.filename,
                 file_type=result.file_type,
                 content=result.content,
@@ -111,8 +114,9 @@ class SearchService:
         count_query = text("""
             SELECT COUNT(*)
             FROM documents d
-            WHERE d.content LIKE :query OR d.filename LIKE :query
+            JOIN documents_fts ON d.id = documents_fts.rowid
+            WHERE documents_fts MATCH :query
         """)
-        total = db.execute(count_query, {"query": f"%{query}%"}).scalar() or 0
+        total = db.execute(count_query, {"query": query}).scalar() or 0
         
         return total

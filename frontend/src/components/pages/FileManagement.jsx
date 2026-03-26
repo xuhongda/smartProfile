@@ -1,6 +1,6 @@
 import React from 'react'
-import { Card, Table, Button, Space, Tooltip, Badge } from 'antd'
-import { EyeOutlined, DeleteOutlined, FilterOutlined, ReloadOutlined, FileOutlined, FileExcelOutlined, FileWordOutlined, FileTextOutlined } from '@ant-design/icons'
+import { Card, Table, Button, Space, Tooltip, Badge, Upload, Progress } from 'antd'
+import { EyeOutlined, DeleteOutlined, FilterOutlined, ReloadOutlined, FileOutlined, FileExcelOutlined, FileWordOutlined, FileTextOutlined, UploadOutlined } from '@ant-design/icons'
 import { motion } from 'framer-motion'
 import { getFileTypeIcon as getFileTypeIconInfo } from '../../utils/fileUtils'
 import '../../styles/Content.css'
@@ -25,7 +25,10 @@ const FileManagement = ({
   setFilterVisible, 
   setFilteredDocuments,
   handleFilePreview, 
-  handleDeleteDocument 
+  handleDeleteDocument,
+  uploading,
+  uploadProgress,
+  handleUpload
 }) => {
   const columns = [
     {
@@ -80,7 +83,7 @@ const FileManagement = ({
               icon={<DeleteOutlined />} 
               size="small" 
               danger
-              onClick={() => handleDeleteDocument(record.id, record.filename)}
+              onClick={() => handleDeleteDocument(record.uuid || record.id, record.filename)}
             />
           </Tooltip>
         </Space>
@@ -121,6 +124,45 @@ const FileManagement = ({
           </Space>
         }
       >
+        <div className="upload-container mb-6">
+          <p className="upload-description">
+            支持上传 Excel (.xlsx, .xls)、Word (.docx) 和文本 (.txt) 文件
+          </p>
+          
+          <div className="upload-area">
+            <Upload
+              name="file"
+              accept=".xlsx,.xls,.docx,.txt"
+              showUploadList={false}
+              customRequest={handleUpload}
+              maxCount={1}
+            >
+              <div className="upload-button-container">
+                {uploading ? (
+                  <div className="uploading-status">
+                    <Progress percent={uploadProgress} />
+                    <p>正在解析并建立索引...</p>
+                  </div>
+                ) : (
+                  <Button 
+                    icon={<UploadOutlined />} 
+                    type="primary" 
+                    size="large"
+                  >
+                    选择文件或拖拽到此处
+                  </Button>
+                )}
+              </div>
+            </Upload>
+          </div>
+          
+          <div className="upload-tips">
+            <p>• 文件大小限制：20MB</p>
+            <p>• 支持的文件格式：.xlsx, .xls, .docx, .txt</p>
+            <p>• 系统会自动提取文件内容并建立搜索索引</p>
+          </div>
+        </div>
+        
         <Table
           columns={columns}
           dataSource={filteredDocuments.length > 0 ? filteredDocuments : documents}

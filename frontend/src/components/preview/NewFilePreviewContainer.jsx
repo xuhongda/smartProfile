@@ -7,7 +7,7 @@ import NewWordPreview from './NewWordPreview';
 import NewExcelPreview from './NewExcelPreview';
 import NewTextPreview from './NewTextPreview';
 
-const NewFilePreviewContainer = ({ file, url, content }) => {
+const NewFilePreviewContainer = ({ file, url, content, keyword = '' }) => {
   const [previewComponent, setPreviewComponent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -55,17 +55,18 @@ const NewFilePreviewContainer = ({ file, url, content }) => {
       switch (type) {
         case 'word':
           setPreviewComponent(
-            <NewWordPreview file={file} url={url} content={content} />
+            <NewWordPreview file={file} url={url} content={content} keyword={keyword} />
           );
           break;
         case 'excel':
           setPreviewComponent(
-            <NewExcelPreview file={file} url={url} content={content} />
+            <NewExcelPreview file={file} url={url} content={content} keyword={keyword} />
           );
           break;
         case 'text':
+        case 'txt':
           setPreviewComponent(
-            <NewTextPreview file={file} content={content} />
+            <NewTextPreview file={file} content={content} keyword={keyword} />
           );
           break;
         default:

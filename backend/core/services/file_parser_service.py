@@ -57,10 +57,21 @@ class FileParserService:
         Returns:
             str: 解析后的文本内容
         """
-        df = pd.read_excel(io.BytesIO(file_content), engine='openpyxl')
-        # 将所有单元格内容转换为字符串并拼接
-        content = ' '.join([' '.join(map(str, row)) for _, row in df.iterrows()])
-        return content
+        excel_file = pd.ExcelFile(io.BytesIO(file_content))
+        content_parts = []
+        
+        # 遍历所有工作表
+        for sheet_name in excel_file.sheet_names:
+            df = pd.read_excel(excel_file, sheet_name=sheet_name, engine='openpyxl')
+            # 读取列名
+            column_names = ' '.join(df.columns.tolist())
+            # 将所有单元格内容转换为字符串并拼接
+            cell_content = ' '.join([' '.join(map(str, row)) for _, row in df.iterrows()])
+            # 组合列名和单元格内容
+            sheet_content = f"{column_names} {cell_content}"
+            content_parts.append(f"工作表 {sheet_name}: {sheet_content}")
+        
+        return ' '.join(content_parts)
     
     def _parse_word(self, file_content: bytes) -> str:
         """解析Word文件
@@ -72,8 +83,24 @@ class FileParserService:
             str: 解析后的文本内容
         """
         doc = docx.Document(io.BytesIO(file_content))
-        content = ' '.join([para.text for para in doc.paragraphs])
-        return content
+        content_parts = []
+        
+        # 提取段落内容
+        for para in doc.paragraphs:
+            if para.text.strip():
+                content_parts.append(para.text)
+        
+        # 提取表格内容
+        for i, table in enumerate(doc.tables):
+            table_content = []
+            for row in table.rows:
+                row_text = ' '.join([cell.text for cell in row.cells])
+                if row_text.strip():
+                    table_content.append(row_text)
+            if table_content:
+                content_parts.append(f"表格 {i+1}: {' '.join(table_content)}")
+        
+        return ' '.join(content_parts)
     
     def _parse_text(self, file_content: bytes) -> str:
         """解析文本文件
