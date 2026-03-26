@@ -1,0 +1,157 @@
+/* 导航菜单样式 */
+.header {
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  height: 64px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  background-color: #ffffff;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  overflow: hidden;
+}
+
+/* 侧边栏切换按钮 */
+.sidebar-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background-color: transparent;
+  border: none;
+  border-radius: 8px;
+  color: #666666;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  margin-right: 16px;
+}
+
+.sidebar-toggle:hover {
+  background-color: #f5f5f5;
+  color: #1890ff;
+  transform: scale(1.05);
+}
+
+/* 侧边栏 */
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: -250px;
+  width: 250px;
+  height: 100vh;
+  background-color: #ffffff;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15);
+  z-index: 1100;
+  transition: left 0.3s ease-in-out;
+  overflow-y: auto;
+}
+
+.sidebar.visible {
+  left: 0;
+}
+
+.sidebar-content {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-header {
+  padding: 20px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.sidebar-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 500;
+  color: #333333;
+}
+
+.sidebar-menu {
+  flex: 1;
+  padding: 16px 0;
+}
+
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 12px 20px;
+  background-color: transparent;
+  border: none;
+  color: #666666;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  text-align: left;
+}
+
+.sidebar-item:hover {
+  background-color: #f5f5f5;
+  color: #1890ff;
+}
+
+.sidebar-item-icon {
+  margin-right: 12px;
+  font-size: 16px;
+}
+
+.sidebar-item-text {
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.header-menu {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-button {
+  display: flex;
+  align-items: center;
+  padding: 10px 20px;
+  background-color: transparent;
+  border: none;
+  border-radius: 8px;
+  color: #666666;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  margin: 0 8px;
+}
+
+.nav-button:hover {
+  background-color: #f5f5f5;
+  color: #1890ff;
+  transform: translateY(-1px);
+}
+
+.nav-button:active {
+  transform: translateY(0);
+  background-color: #e8e8e8;
+}
+
+.nav-button.active {
+  background-color: #e6f7ff;
+  color: #1890ff;
+  font-weight: 500;
+}
+
+.nav-button-icon {
+  margin-right: 8px;
+  transition: all 0.2s ease-in-out;
+}
+
+.nav-button:hover .nav-button-icon {
+  transform: scale(1.05);
+}
+
+.nav-button-text {
+  transition: all 0.2s ease-in-out;
+  white-space: nowrap;
+}

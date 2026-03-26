@@ -1,0 +1,78 @@
+/* 抽屉组件样式 */
+.drawer-body {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* 文件预览抽屉 */
+.preview-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.preview-meta {
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.preview-text {
+  flex: 1;
+  overflow: auto;
+  padding: 16px 0;
+}
+
+.preview-text pre {
+  white-space: pre-wrap;
+  font-family: monospace;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* 筛选抽屉 */
+.filter-drawer-content {
+  padding: 16px;
+}
+
+.filter-form {
+  layout: vertical;
+}
+
+.filter-form-item {
+  margin-bottom: 16px;
+}
+
+.filter-form-label {
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.filter-form-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #f0f0f0;
+}
+
+/* 筛选预览抽屉 */
+.filter-preview-content {
+  padding: 16px;
+}
+
+.filter-preview-header {
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.filter-preview-empty {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 400px;
+  color: #999;
+}
