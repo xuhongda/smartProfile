@@ -6,6 +6,12 @@ class Config:
     """配置管理类"""
     
     def __init__(self, config_file: str = None):
+        # 默认配置文件路径
+        if config_file is None:
+            # 使用后端目录下的 config.json 文件
+            config_file = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'config.json')
+        self.config_file = config_file
+        
         self.config = {
             # 数据库配置
             "database": {
@@ -22,7 +28,8 @@ class Config:
             "ai_service": {
                 "api_base_url": os.getenv("AI_API_BASE_URL", ""),
                 "api_key": os.getenv("AI_API_KEY", ""),
-                "embedding_model": os.getenv("AI_EMBEDDING_MODEL", "text-embedding-3-small"),
+                "embedding_model": os.getenv("AI_EMBEDDING_MODEL", "bge-small-zh-v1.5"),
+                "speech_model": os.getenv("AI_SPEECH_MODEL", "FunASR"),
                 "chat_model": os.getenv("AI_CHAT_MODEL", "gpt-3.5-turbo"),
                 "timeout": int(os.getenv("AI_TIMEOUT", "5"))
             },
@@ -44,8 +51,8 @@ class Config:
         }
         
         # 加载配置文件
-        if config_file and os.path.exists(config_file):
-            self._load_config_file(config_file)
+        if os.path.exists(self.config_file):
+            self._load_config_file(self.config_file)
     
     def _load_config_file(self, config_file: str):
         """加载配置文件
@@ -119,6 +126,22 @@ class Config:
             配置字典
         """
         return self.config
+    
+    def save(self):
+        """保存配置到文件
+        """
+        try:
+            # 确保配置文件目录存在
+            config_dir = os.path.dirname(self.config_file)
+            if config_dir:
+                os.makedirs(config_dir, exist_ok=True)
+            
+            # 保存配置到文件
+            with open(self.config_file, "w", encoding="utf-8") as f:
+                json.dump(self.config, f, indent=2, ensure_ascii=False)
+            print(f"配置已保存到: {self.config_file}")
+        except Exception as e:
+            print(f"保存配置文件失败: {str(e)}")
 
 # 创建全局配置实例
 config = Config()

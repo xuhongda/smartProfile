@@ -117,7 +117,7 @@ export const getFileTypeIcon = (fileType) => {
 
 // 高亮关键词
 export const highlightKeywords = (text, keyword) => {
-  if (!keyword) return text
+  if (!keyword || !text) return text || ''
   
   const regex = new RegExp(keyword, 'gi')
   const parts = text.split(regex)

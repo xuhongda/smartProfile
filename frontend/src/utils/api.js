@@ -56,14 +56,19 @@ export const handleUpload = async (file, onSuccess, onError, onProgress, setUplo
 }
 
 // 处理搜索
-export const handleSearch = async (keyword, setSearchLoading, setSearchKeyword, setSearchResults, setActiveMenu) => {
+export const handleSearch = async (keyword, setSearchLoading, setSearchKeyword, setSearchResults, setActiveMenu, enableAi = false, setAiResponse = null) => {
   if (!keyword) return
   
   setSearchLoading(true)
   setSearchKeyword(keyword)
   
   try {
-    const response = await fetch(`http://localhost:8000/search?q=${encodeURIComponent(keyword)}`)
+    let url = `http://localhost:8000/search?q=${encodeURIComponent(keyword)}`
+    if (enableAi) {
+      url += '&enable_ai=true'
+    }
+    
+    const response = await fetch(url)
     if (!response.ok) {
       throw new Error('搜索失败')
     }
@@ -72,11 +77,23 @@ export const handleSearch = async (keyword, setSearchLoading, setSearchKeyword, 
     if (result.success) {
       setSearchResults(result.results)
       setActiveMenu('search')
+      // 处理 AI 回答
+      if (result.ai_response && setAiResponse) {
+        setAiResponse(result.ai_response)
+      } else if (setAiResponse) {
+        setAiResponse(null)
+      }
     } else {
       message.error(result.message, 2) // 2秒
+      if (setAiResponse) {
+        setAiResponse(null)
+      }
     }
   } catch (error) {
     message.error('搜索失败: ' + error.message, 2) // 2秒
+    if (setAiResponse) {
+      setAiResponse(null)
+    }
   } finally {
     setSearchLoading(false)
   }

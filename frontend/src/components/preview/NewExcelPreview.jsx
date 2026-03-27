@@ -2,12 +2,22 @@ import React, { useState, useEffect } from 'react';
 import { Spin, Alert, Empty, Button } from 'antd';
 import * as XLSX from 'xlsx';
 
-const NewExcelPreview = ({ file, url, content }) => {
+const NewExcelPreview = ({ file, url, content, keyword = '' }) => {
   const [sheets, setSheets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showFullContent, setShowFullContent] = useState(false);
   const [activeSheet, setActiveSheet] = useState(0);
+
+  // 高亮关键词
+  const highlightKeyword = (text, keyword) => {
+    if (!keyword || !text) return text;
+    
+    const escapedKeyword = keyword.replace(/[.*+?^${}()|\[\]\\]/g, '\\$&');
+    const regex = new RegExp(`(${escapedKeyword})`, 'gi');
+    const result = String(text).replace(regex, '<span style="background-color: #ffeb3b; padding: 0 2px; border-radius: 2px;">$1</span>');
+    return result;
+  };
 
   // 加载Excel文档内容
   const loadExcelDocument = async () => {
@@ -82,7 +92,7 @@ const NewExcelPreview = ({ file, url, content }) => {
 
   useEffect(() => {
     loadExcelDocument();
-  }, [file, url, content]);
+  }, [file, url, content, keyword]);
 
   // 切换显示完整内容
   const toggleFullContent = () => {
@@ -108,7 +118,7 @@ const NewExcelPreview = ({ file, url, content }) => {
               <tr key={rowIndex} style={{ backgroundColor: rowIndex % 2 === 0 ? 'white' : '#f9f9f9' }}>
                 {row.map((cell, cellIndex) => (
                   <td key={cellIndex} style={{ padding: '8px', border: '1px solid #e8e8e8' }}>
-                    {cell || ''}
+                    <div dangerouslySetInnerHTML={{ __html: highlightKeyword(cell, keyword) }} />
                   </td>
                 ))}
               </tr>
@@ -126,12 +136,12 @@ const NewExcelPreview = ({ file, url, content }) => {
                 {Array.isArray(row) ? (
                   row.map((cell, cellIndex) => (
                     <td key={cellIndex} style={{ padding: '8px', border: '1px solid #e8e8e8' }}>
-                      {cell || ''}
+                      <div dangerouslySetInnerHTML={{ __html: highlightKeyword(cell, keyword) }} />
                     </td>
                   ))
                 ) : (
                   <td style={{ padding: '8px', border: '1px solid #e8e8e8' }}>
-                    {row || ''}
+                    <div dangerouslySetInnerHTML={{ __html: highlightKeyword(row, keyword) }} />
                   </td>
                 )}
               </tr>

@@ -17,7 +17,7 @@ const ChatMessages = ({ messages, typingText, highlightKeywords, handleFilePrevi
 
   return (
     <div className="chat-messages" style={{ padding: '16px' }}>
-      {messages.map(message => (
+      {Array.isArray(messages) ? messages.map(message => (
         <div 
           key={message.id} 
           className={`message ${message.role}`}
@@ -31,10 +31,11 @@ const ChatMessages = ({ messages, typingText, highlightKeywords, handleFilePrevi
             className="message-content"
             style={{
               maxWidth: '70%',
-              padding: '12px',
-              borderRadius: '16px',
-              backgroundColor: message.role === 'user' ? '#1890ff' : '#f0f0f0',
-              color: message.role === 'user' ? '#fff' : '#333'
+              padding: '10px 14px',
+              borderRadius: '18px',
+              background: message.role === 'user' ? '#e3f2fd' : '#f5f5f5',
+              color: '#333',
+              boxShadow: '0 1px 2px rgba(0, 0, 0, 0.08)'
             }}
           >
             {message.isThinking ? (
@@ -44,7 +45,7 @@ const ChatMessages = ({ messages, typingText, highlightKeywords, handleFilePrevi
             ) : (
               <>
                 <p style={{ margin: 0 }}>{message.content}</p>
-                {message.sources && message.sources.length > 0 && (
+                {message.sources && Array.isArray(message.sources) && message.sources.length > 0 && (
                   <div className="message-sources" style={{ marginTop: '8px' }}>
                     <h4 style={{ margin: '0 0 8px 0', fontSize: '12px' }}>参考来源：</h4>
                     {message.sources.map(source => (
@@ -71,7 +72,7 @@ const ChatMessages = ({ messages, typingText, highlightKeywords, handleFilePrevi
                             </Button>
                           </div>
                           <p className="source-snippet" style={{ fontSize: '12px', margin: 0 }}>
-                            {source.keyword ? highlightKeywords(source.snippet, source.keyword) : source.snippet}
+                            {source.keyword ? highlightKeywords(source.snippet, source.keyword) : (source.snippet || '')}
                           </p>
                         </div>
                       </Card>
@@ -82,7 +83,9 @@ const ChatMessages = ({ messages, typingText, highlightKeywords, handleFilePrevi
             )}
           </div>
         </div>
-      ))}
+      )) : (
+        <div style={{ flex: 1 }} />
+      )}
       {typingText && (
         <div 
           className="message assistant"
@@ -96,10 +99,11 @@ const ChatMessages = ({ messages, typingText, highlightKeywords, handleFilePrevi
             className="message-content"
             style={{
               maxWidth: '70%',
-              padding: '12px',
-              borderRadius: '16px',
-              backgroundColor: '#f0f0f0',
-              color: '#333'
+              padding: '10px 14px',
+              borderRadius: '18px',
+              background: '#f0f0f0',
+              color: '#333',
+              boxShadow: '0 1px 2px rgba(0, 0, 0, 0.08)'
             }}
           >
             <p style={{ margin: 0 }}>{typingText}</p>
@@ -107,7 +111,7 @@ const ChatMessages = ({ messages, typingText, highlightKeywords, handleFilePrevi
         </div>
       )}
       {/* 占位元素，确保输入框始终在底部 */}
-      {messages.length === 0 && !typingText && (
+      {(!Array.isArray(messages) || messages.length === 0) && !typingText && (
         <div style={{ flex: 1 }} />
       )}
       {/* 用于自动滚动的参考元素 */}

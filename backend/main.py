@@ -7,6 +7,8 @@ import os
 from database import get_db, Document
 from core.services import container
 from core.models.api_response import APIResponse
+from core.services.hybrid_search_service import hybrid_search_service
+from core.services.vector_store import vector_store
 
 # 从容器获取服务和配置
 config = container.resolve('config')
@@ -133,6 +135,19 @@ async def upload_file(
             db, file.filename, parse_result.file_type, content
         )
         
+        # 添加到 ChromaDB 向量数据库
+        try:
+            metadata = {
+                "filename": doc.filename,
+                "file_type": doc.file_type,
+                "created_at": str(doc.created_at),
+                "updated_at": str(doc.updated_at)
+            }
+            vector_store.add_document(doc.uuid, content, metadata)
+            print(f"文档已添加到 ChromaDB: {doc.filename}")
+        except Exception as e:
+            print(f"添加到 ChromaDB 失败: {str(e)}")
+        
         return {
             "success": True,
             "message": message,
@@ -152,6 +167,7 @@ async def search(
     q: str,
     page: int = 1,
     page_size: int = 10,
+    enable_ai: bool = False,
     db: Session = Depends(get_db)
 ):
     """全文搜索接口
@@ -160,6 +176,7 @@ async def search(
         q: 搜索关键词
         page: 页码
         page_size: 每页大小
+        enable_ai: 是否启用AI增强
         db: 数据库会话
     
     Returns:
@@ -169,11 +186,31 @@ async def search(
         if not q:
             raise HTTPException(status_code=400, detail="搜索关键词不能为空")
         
-        # 调用搜索服务
-        search_result = search_service.search(db, q, page, page_size)
+        # 检查是否使用 @AI 标记
+        use_ai = enable_ai or q.strip().startswith("@AI")
+        if use_ai and q.strip().startswith("@AI"):
+            # 移除 @AI 标记
+            q = q.strip()[3:].strip()
         
-        # 转换为API响应格式
+        # 普通搜索：先使用原来的搜索服务获取所有相关结果
+        search_result = search_service.search(db, q, page, page_size)
         result_dict = search_result.to_dict()
+        results = result_dict.get("results", [])
+        
+        # 如果启用AI增强，将搜索结果发给AI生成回答
+        if use_ai:
+            # 只有当有搜索结果时才生成AI响应，避免基于错误数据的虚假回答
+            if results:
+                # 生成AI响应
+                search_results_for_ai = [{"filename": r.get("filename"), "content": r.get("content")} for r in results]
+                ai_response = generic_ai_client.generate_ai_response(q, search_results_for_ai)
+                if ai_response:
+                    # 将AI回答放在搜索结果后面
+                    result_dict["ai_response"] = ai_response
+            else:
+                # 如果没有搜索结果，不调用AI，避免虚假回答
+                print("没有搜索结果，不调用AI生成回答")
+        
         return {
             "success": True,
             **result_dict
@@ -406,6 +443,8 @@ async def set_ai_config(
             config.set("ai_service.api_key", config_data["api_key"])
         if "embedding_model" in config_data:
             config.set("ai_service.embedding_model", config_data["embedding_model"])
+        if "speech_model" in config_data:
+            config.set("ai_service.speech_model", config_data["speech_model"])
         if "chat_model" in config_data:
             config.set("ai_service.chat_model", config_data["chat_model"])
         if "timeout" in config_data:
@@ -413,6 +452,9 @@ async def set_ai_config(
         
         # 更新AI客户端配置
         generic_ai_client.update_config()
+        
+        # 保存配置到文件
+        config.save()
         
         return {
             "success": True,
@@ -422,6 +464,66 @@ async def set_ai_config(
         return {
             "success": False,
             "message": f"配置更新失败: {str(e)}"
+        }
+
+@app.post("/api/ai/test-connection")
+async def test_ai_connection(
+    request: Request
+):
+    """测试AI服务连接
+    
+    Args:
+        request: 包含API地址和密钥的请求
+    
+    Returns:
+        连接测试结果
+    """
+    try:
+        # 解析请求体
+        data = await request.json()
+        api_base_url = data.get("api_base_url", config.get("ai_service.api_base_url"))
+        api_key = data.get("api_key", config.get("ai_service.api_key"))
+        
+        if not api_base_url:
+            return {
+                "success": False,
+                "message": "API地址不能为空"
+            }
+        
+        # 测试连接
+        import httpx
+        client = httpx.Client(timeout=httpx.Timeout(5.0))
+        headers = {}
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
+        
+        # 尝试调用模型列表接口
+        response = client.get(f"{api_base_url.rstrip('/')}/models", headers=headers)
+        
+        if response.status_code == 200:
+            return {
+                "success": True,
+                "message": "连接测试成功"
+            }
+        else:
+            return {
+                "success": False,
+                "message": f"连接测试失败，状态码: {response.status_code}"
+            }
+    except httpx.ConnectError:
+        return {
+            "success": False,
+            "message": "连接失败，请检查API地址是否正确"
+        }
+    except httpx.TimeoutException:
+        return {
+            "success": False,
+            "message": "连接超时，请检查服务是否正常运行"
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"连接测试失败: {str(e)}"
         }
 
 @app.post("/api/model/upload")
@@ -493,45 +595,87 @@ async def delete_model(
             "message": f"删除模型失败: {str(e)}"
         }
 
-@app.post("/api/model/load/{model_name}")
-async def load_model(
-    model_name: str
+
+
+@app.post("/api/embedding")
+async def create_embedding(
+    request: Request
 ):
-    """加载模型
+    """生成文本嵌入
     
     Args:
-        model_name: 模型名称
+        request: 包含文本数据的请求
     
     Returns:
-        加载结果
+        嵌入向量
     """
     try:
-        # 调用模型管理服务加载模型
-        result = model_manager_service.load_model(model_name)
+        # 解析请求体
+        data = await request.json()
+        text = data.get("text", "")
         
-        return result
-    except HTTPException:
-        raise
+        if not text:
+            return {
+                "success": False,
+                "message": "文本不能为空"
+            }
+        
+        # 生成嵌入
+        embedding = generic_ai_client.create_embedding(text)
+        
+        if embedding:
+            return {
+                "success": True,
+                "embedding": embedding
+            }
+        else:
+            return {
+                "success": False,
+                "message": "生成嵌入失败，请检查模型配置"
+            }
     except Exception as e:
         return {
             "success": False,
-            "message": f"加载模型失败: {str(e)}"
+            "message": f"生成嵌入失败: {str(e)}"
         }
 
-@app.get("/api/model/status")
-async def get_model_status():
-    """获取模型加载状态
+@app.post("/api/speech/recognize")
+async def speech_recognize(
+    file: UploadFile = File(...)
+):
+    """语音识别
+    
+    Args:
+        file: 上传的音频文件
     
     Returns:
-        模型加载状态
+        识别结果
     """
     try:
-        # 调用模型管理服务获取模型状态
-        result = model_manager_service.get_model_status()
+        # 读取音频文件
+        audio_data = await file.read()
         
-        return result
+        if not audio_data:
+            return {
+                "success": False,
+                "message": "音频文件不能为空"
+            }
+        
+        # 进行语音识别
+        result = generic_ai_client.speech_recognition(audio_data)
+        
+        if result:
+            return {
+                "success": True,
+                "text": result
+            }
+        else:
+            return {
+                "success": False,
+                "message": "语音识别失败，请检查模型配置"
+            }
     except Exception as e:
         return {
             "success": False,
-            "message": f"获取模型状态失败: {str(e)}"
+            "message": f"语音识别失败: {str(e)}"
         }

@@ -42,7 +42,8 @@ const SearchResults = ({
   sortBy, 
   setSortBy, 
   handleFilePreview, 
-  handleDeleteDocument 
+  handleDeleteDocument,
+  aiResponse
 }) => {
   return (
     <motion.div
@@ -148,7 +149,7 @@ const SearchResults = ({
                           </Space>
                         </Space>
                         <div className="result-snippet">
-                          {highlightKeywords(result.snippet, searchKeyword)}
+                          {highlightKeywords(result.snippet || '', searchKeyword)}
                         </div>
                         <div className="result-meta">
                           <span>{new Date(result.created_at).toLocaleString()}</span>
@@ -161,6 +162,22 @@ const SearchResults = ({
                   description="未找到相关文件"
                   style={{ margin: '60px 0' }}
                 />
+              )}
+              
+              {/* AI 回答显示 */}
+              {aiResponse && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                  style={{ marginTop: 24 }}
+                >
+                  <Card title="AI 回答" variant="outlined" className="ai-response-card">
+                    <div className="ai-response-content">
+                      {aiResponse}
+                    </div>
+                  </Card>
+                </motion.div>
               )}
             </AnimatePresence>
           </Col>

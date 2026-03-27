@@ -5,7 +5,12 @@ import datetime
 import uuid
 
 # 创建数据库引擎
-engine = create_engine('sqlite:///data/unstructured_data.db', echo=True)
+import os
+# 使用配置中的数据库路径
+db_dir = os.path.join(os.path.dirname(__file__), 'data')
+os.makedirs(db_dir, exist_ok=True)
+db_path = os.path.join(db_dir, 'unstructured_data.db')
+engine = create_engine(f'sqlite:///{db_path}', echo=True)
 
 # 创建会话工厂
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
